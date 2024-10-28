@@ -45,7 +45,7 @@ export interface NavigationMenuProps<T> extends Pick<NavigationMenuRootProps, 'd
    * @defaultValue appConfig.ui.icons.chevronDown
    */
   trailingIcon?: string
-  items?: T[] | T[][]
+  items?: T
   color?: NavigationMenuVariants['color']
   variant?: NavigationMenuVariants['variant']
   /**
@@ -85,7 +85,7 @@ export type NavigationMenuSlots<T extends { slot?: string }> = {
 
 </script>
 
-<script setup lang="ts" generic="T extends NavigationMenuItem">
+<script setup lang="ts" generic="T extends NavigationMenuItem[] | NavigationMenuItem[][]">
 import { computed, toRef } from 'vue'
 import { NavigationMenuRoot, NavigationMenuList, NavigationMenuItem, NavigationMenuTrigger, NavigationMenuContent, NavigationMenuLink, NavigationMenuIndicator, NavigationMenuViewport, useForwardPropsEmits } from 'radix-vue'
 import { reactivePick, createReusableTemplate } from '@vueuse/core'
@@ -103,13 +103,16 @@ const props = withDefaults(defineProps<NavigationMenuProps<T>>(), {
   delayDuration: 0,
   labelKey: 'label'
 })
+
+type Item = T extends (infer U)[][] ? U : T extends (infer U)[] ? U : never
+
 const emits = defineEmits<NavigationMenuEmits>()
-const slots = defineSlots<NavigationMenuSlots<T>>()
+const slots = defineSlots<NavigationMenuSlots<Item>>()
 
 const rootProps = useForwardPropsEmits(reactivePick(props, 'as', 'modelValue', 'defaultValue', 'delayDuration', 'skipDelayDuration', 'orientation'), emits)
 const contentProps = toRef(() => props.content)
 
-const [DefineItemTemplate, ReuseItemTemplate] = createReusableTemplate<{ item: NavigationMenuItem, active?: boolean, index: number }>()
+const [DefineItemTemplate, ReuseItemTemplate] = createReusableTemplate<{ item: Item, active?: boolean, index: number }>()
 
 const ui = computed(() => navigationMenu({
   orientation: props.orientation,
@@ -119,19 +122,19 @@ const ui = computed(() => navigationMenu({
   highlightColor: props.highlightColor || props.color
 }))
 
-const lists = computed(() => props.items?.length ? (Array.isArray(props.items[0]) ? props.items : [props.items]) as T[][] : [])
+const lists = computed(() => props.items?.length ? (Array.isArray(props.items[0]) ? props.items : [props.items]) as Item[][] : [])
 </script>
 
 <template>
   <DefineItemTemplate v-slot="{ item, active, index }">
-    <slot :name="item.slot || 'item'" :item="(item as T)" :index="index">
-      <slot :name="item.slot ? `${item.slot}-leading` : 'item-leading'" :item="(item as T)" :active="active" :index="index">
+    <slot :name="item.slot || 'item'" :item="item" :index="index">
+      <slot :name="item.slot ? `${item.slot}-leading` : 'item-leading'" :item="item" :active="active" :index="index">
         <UAvatar v-if="item.avatar" :size="((props.ui?.linkLeadingAvatarSize || ui.linkLeadingAvatarSize()) as AvatarProps['size'])" v-bind="item.avatar" :class="ui.linkLeadingAvatar({ class: props.ui?.linkLeadingAvatar, active, disabled: !!item.disabled })" />
         <UIcon v-else-if="item.icon" :name="item.icon" :class="ui.linkLeadingIcon({ class: props.ui?.linkLeadingIcon, active, disabled: !!item.disabled })" />
       </slot>
 
       <span v-if="get(item, props.labelKey as string) || !!slots[item.slot ? `${item.slot}-label` : 'item-label']" :class="ui.linkLabel({ class: props.ui?.linkLabel })">
-        <slot :name="item.slot ? `${item.slot}-label` : 'item-label'" :item="(item as T)" :active="active" :index="index">
+        <slot :name="item.slot ? `${item.slot}-label` : 'item-label'" :item="item" :active="active" :index="index">
           {{ get(item, props.labelKey as string) }}
         </slot>
 
@@ -139,7 +142,7 @@ const lists = computed(() => props.items?.length ? (Array.isArray(props.items[0]
       </span>
 
       <span v-if="item.badge || item.children?.length || !!slots[item.slot ? `${item.slot}-trailing` : 'item-trailing']" :class="ui.linkTrailing({ class: props.ui?.linkTrailing })">
-        <slot :name="item.slot ? `${item.slot}-trailing` : 'item-trailing'" :item="(item as T)" :active="active" :index="index">
+        <slot :name="item.slot ? `${item.slot}-trailing` : 'item-trailing'" :item="item" :active="active" :index="index">
           <UBadge
             v-if="item.badge"
             color="neutral"
